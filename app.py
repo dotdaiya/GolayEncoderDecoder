@@ -17,7 +17,7 @@ class Calculus:
 	@staticmethod
 	def generateIdentity(dimension):
 		# Generates base vector
-		toret = np.array((list(bin((2**(dimension-1)) >> 0)[2:]),),dtype=int)
+		toret = np.array((list(bin((2**(dimension)) >> 1)[2:]),),dtype=int)
 		vector = lambda i,dimension : np.array((list(''.zfill(dimension-i) +\
 			bin(2**i >> 1)[2:]),),dtype=int)
 
@@ -86,5 +86,7 @@ class Golay:
 
 
 if __name__ == "__main__":
+	print()
 	g24 = Golay()
+	pprint.pprint(g24.__dict__)
 	pprint.pprint(g24.IMatrix)
