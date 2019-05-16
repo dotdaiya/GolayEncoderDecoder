@@ -1,6 +1,8 @@
 import numpy as np
 import pprint
-
+import sys
+import time as time
+import random as r
 
 
 class Calculus:
@@ -90,10 +92,10 @@ class Calculus:
 class Golay:
 	def __init__(self):
 		# Words
-		self.__source = np.zeros((12,),dtype=int) # Size 12
-		self.__decoded = np.zeros((12,),dtype=int) # Size 12
-		self.__encoded = np.zeros((24,),dtype=int) # Size 24
-		self.__received = np.zeros((24,),dtype=int) # Size 24
+		self.__source = np.zeros((1,12),dtype=int) # Size 12
+		self.__decoded = np.zeros((1,12),dtype=int) # Size 12
+		self.__encoded = np.zeros((1,24),dtype=int) # Size 24
+		self.__received = np.zeros((1,24),dtype=int) # Size 24
 
 		# Matrix
 		self.__AMatrix = np.array([[1,1,0,1,1,1,0,0,0,1,0,1],
@@ -111,7 +113,6 @@ class Golay:
 		self.__IMatrix = Calculus.generateIdentity(12) # Size 12x12
 		self.__HMatrix = np.concatenate((self.__IMatrix,self.__AMatrix),axis=1) # Size 12x24
 		self.__GMatrix = np.concatenate((self.__AMatrix,self.__IMatrix),axis=1) # Size 12x24
-
 
 	# Getters
 	@property
@@ -146,55 +147,85 @@ class Golay:
 	def IMatrix(self):
 		return self.__IMatrix
 
+	# Setters
+	@source.setter
+	def source(self,value):
+		self.__source = value
+
+	@decoded.setter
+	def decoded(self,value):
+		self.__decoded = value
+
+	@encoded.setter
+	def encoded(self,value):
+		self.__encoded = value
+
+	@received.setter
+	def received(self,value):
+		self.__received = value
+
+	@GMatrix.setter
+	def GMatrix(self,value):
+		self.__GMatrix = value
+
+	@HMatrix.setter
+	def HMatrix(self,value):
+		self.__GMatrix = value
+
+	@AMatrix.setter
+	def AMatrix(self,value):
+		self.__AMatrix = value
+
+	@IMatrix.setter
+	def IMatrix(self,value):
+		self.__IMatrix = value
+
 
 	'''
-		Encode a given word
+		Encode a word of 12 digits
 	'''
-	def encode(self,word):
-		return Calculus.matrixMultiplication(word,self.GMatrix)
-
+	def encode(self):
+		self.encoded = Calculus.matrixMultiplication(self.source,self.GMatrix)
 
 	'''
 		Decode a encoded word
 	'''
-	def decode(self,received):
-		eVector = self.decodeError(received)
+	def decode(self):
+		eVector = self.decodeError()
 		if isinstance(eVector,type(None)):
-			print("Se requiere retransmisión.")
-			return None
+			print("\n\n\nIt needs retransmision.")
+			self.decoded = None
 		else:
-			return Calculus.vectorAddSub(received[0],eVector[0])
+			self.decoded = np.copy(Calculus.vectorAddSub(self.received[0],eVector[0]))
 
 
 	'''
-		Algorith to get the error of the codified word
+		Algorithm to get the error of the codified word
+		For more information check Readme
 	'''
-	def decodeError(self,received):
+	def decodeError(self):
 		# Compute syndrome synd = received * HT
-		synd = Calculus.matrixMultiplication(received,self.HMatrix.transpose())
+		synd = np.copy(Calculus.matrixMultiplication(self.received,self.HMatrix.transpose()))
 		eVector = np.zeros((1,24),dtype=int) 
 		zeroVector = np.zeros((1,12),dtype=int)
 
 
-		if Calculus.weight(synd[0]) <= 3: # No errors
+		if Calculus.weight(synd[0]) <= 3: 
 			return np.concatenate((synd,zeroVector),axis=1)
 
-		for row in range(0,self.AMatrix.shape[0]): # 1 error
+		for row in range(0,self.AMatrix.shape[0]):
 			x = Calculus.vectorAddSub(synd[0],self.AMatrix[row])
 			if Calculus.weight(x) <= 2:
-				# print(row)
-				# print(x)
-				# print(self.IMatrix[row])
 				y = np.concatenate((self.IMatrix[row], x),axis=0)
 				return y.reshape(1,24)
 
 		# Compute second syndrome
-		synd2 = Calculus.matrixMultiplication(synd,self.AMatrix)
+		synd2 = np.copy(Calculus.matrixMultiplication(synd,self.AMatrix))
 
-		if Calculus.weight(synd2) <= 3:
+		if Calculus.weight(synd2) <= 3: 
 			return np.concatenate((synd2,zeroVector),axis=1)
 
-		for row in range(0,self.AMatrix.shape[0]): # 1 error
+		for row in range(0,self.AMatrix.shape[0]): 
 			x = Calculus.vectorAddSub(synd2[0],self.AMatrix[row])
 			if Calculus.weight(x) <= 2:
 				y = np.concatenate((x,self.IMatrix[row]),axis=0)
@@ -205,25 +236,99 @@ class Golay:
 		Introduce errors in a given codified word
 	'''
 	def introduceErrors(self):
-		pass
+		listRan = []
+		self.received = np.copy(self.encoded)
+		
+		while True:
+			n = int(input("Enter a number of errors [0-5]: "),10)
+			if n >= 1 and n < 5:
+				break
+			if n == 0:
+				return None
+
+		for i in range(0,n):
+			while True:
+				ranPos = r.randint(0,23)
+				if ranPos not in listRan:
+					listRan.append(ranPos)
+					break
+
+			v = self.__received[0][ranPos]
+
+			if v == 1:
+				v = 0
+			elif v == 0:
+				v = 1
+			else:
+				print("Error.")
+				return None
+			
+			self.__received[0][ranPos] = v
+
 
 
 def main():
 	g = Golay()
-	word = np.array((list("101111101011"),),dtype=int)	
-	received = g.encode(word)
-	print("Vector codificado: "+ str(received))
-	received[0][7] = 0
-	received[0][0] = 0
-	received[0][18] = 0
-	received[0][23] = 0
-	print("Vector codificado c: "+ str(received))
-	
 
-	decoded = g.decode(received)
-	print("Vector decodificado: "+ str(decoded))
-	if Calculus.compareMatrix(received,decoded):
-		print("equals")
+	while True:
+		print_menu()
+		choice = int(input("Enter your option [1-4]: "),10)
+
+		if choice == 1:
+			while True:
+				x = input("Enter the word you want to codify [12 chars]")
+				if bininput(x) and len(x) == 12:
+					for i in range(0,12):
+						g.source[0][i] = int(x[i],10)
+					break
+
+			print("\nSource word: " +  str(g.source))
+			print("\nEncoding word...")
+			g.encode()
+			time.sleep(2)
+			print("Encoded word: " + str(g.encoded) + "\n\n\n")
+		elif choice == 2:
+			g.introduceErrors()
+		elif choice == 3:
+			print("\nDecoding word...")
+			g.decode()
+			time.sleep(2)
+			print("Source word: " + str(g.source))
+			print("Encoded word: " + str(g.encoded))
+			print("Received word: " + str(g.received))
+			print("Decoded word: " + str(g.decoded) + "\n\n\n")
+			print("Comparing received and encoded word:"+ "\n\n\n")
+			print(str(g.encoded)[2:-2])
+			print(str(g.received)[2:-2])
+
+			print("\n\nComparing source word and decoded word:")
+			print(str(g.source)[2:-2])
+			print(str(g.decoded)[25:-1])
+		elif choice == 4:
+			sys.exit("\n\nClosing...")
+		else:
+			print("Enter a number [1-4].\n\n",flush=True)			
+
+
+def bininput(input_string):
+    for character in input_string:
+        if character == '0':
+            continue
+        elif character == '1':
+            continue
+        else:
+            return False
+    return True
+
+
+def print_menu():
+	print(30*"-" + "MENU" + "-"*30)
+	print("1: Codificar palabra.")
+	print("2: Introducir errores (Opcional).")
+	print("3: Decodificar palabra con n errores.")
+	print("4: Salir.")
+	print(30*"-" + "----" + "-"*30)
+
 
 if __name__ == "__main__":
 	main()
